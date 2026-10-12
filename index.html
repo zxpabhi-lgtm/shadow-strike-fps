@@ -1,0 +1,210 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHADOW STRIKE | FPS</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#080d12;color:#fff;font-family:Arial,sans-serif}
+canvas{display:block}
+#menu{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;text-align:center;background:linear-gradient(130deg,#07111beF,#10251ddd)}
+.panel{padding:35px;max-width:520px;width:90%;border:1px solid #46616e;background:#09131eeF;box-shadow:0 0 55px #000}
+h1{font-size:clamp(36px,8vw,68px);letter-spacing:5px;margin:0;color:#e7f7ff}
+h1 span{color:#ff543d}
+p{color:#a8bac6;line-height:1.7}
+button{background:#e74732;color:white;border:0;padding:15px 28px;font-size:16px;font-weight:bold;cursor:pointer}
+button:hover{background:#ff654a}
+#hud{position:fixed;inset:0;pointer-events:none;display:none}
+#stats{position:absolute;left:25px;bottom:24px;background:#08131dcc;padding:14px 20px;border-left:3px solid #e74732}
+#ammo{position:absolute;right:25px;bottom:24px;font-size:24px;background:#08131dcc;padding:14px}
+#cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:25px;color:#fff}
+#tip{position:absolute;top:20px;left:50%;transform:translateX(-50%);background:#07111bcc;padding:10px;text-align:center;font-size:12px}
+#hit{position:absolute;inset:0;border:0 solid #ff3e2e}
+#message{position:absolute;top:28%;width:100%;text-align:center;font-size:25px;color:#ff604b}
+</style>
+</head>
+<body>
+<div id="menu">
+ <div class="panel">
+  <h1>SHADOW <span>STRIKE</span></h1>
+  <p>TACTICAL COMBAT SIMULATION<br>MISSION 01 — ABANDONED OUTPOST</p>
+  <p>W A S D — MOVE<br>MOUSE — AIM · LEFT CLICK — FIRE<br>SHIFT — SPRINT · R — RELOAD · ESC — RELEASE MOUSE</p>
+  <button id="start">DEPLOY TO MISSION</button>
+  <p>Eliminate all targets. Survive the mission.</p>
+ </div>
+</div>
+<div id="hud">
+ <div id="tip">WASD MOVE &nbsp; • &nbsp; SHIFT SPRINT &nbsp; • &nbsp; R RELOAD</div>
+ <div id="cross">+</div>
+ <div id="stats">HEALTH <b id="health">100</b><br><br>TARGETS <b id="kills">0</b></div>
+ <div id="ammo">AMMO <b id="bullets">30</b> / 30</div>
+ <div id="hit"></div><div id="message"></div>
+</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x899ba5);
+scene.fog=new THREE.Fog(0x899ba5,24,100);
+
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,200);
+camera.position.set(0,1.7,8);
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.1;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xdceaff,0x394331,2));
+const sun=new THREE.DirectionalLight(0xffe0bb,3);
+sun.position.set(-12,22,10);sun.castShadow=true;
+sun.shadow.mapSize.set(1024,1024);
+sun.shadow.camera.left=-35;sun.shadow.camera.right=35;
+sun.shadow.camera.top=35;sun.shadow.camera.bottom=-35;
+scene.add(sun);
+
+function mat(color,roughness=1){return new THREE.MeshStandardMaterial({color,roughness})}
+const groundMat=mat(0x4c5746), concrete=mat(0x626b6a), dark=mat(0x252e30), metal=mat(0x343b3e,.65);
+function box(x,y,z,sx,sy,sz,material,shadow=true){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),material);
+ m.position.set(x,y,z);m.castShadow=shadow;m.receiveShadow=true;scene.add(m);return m;
+}
+box(0,-.3,0,100,.5,100,groundMat);
+for(let i=0;i<45;i++){
+ const x=(Math.random()-.5)*85,z=(Math.random()-.5)*85;
+ if(Math.abs(x)<8&&Math.abs(z)<12)continue;
+ box(x,-.02,z,.15+Math.random()*.6,.02,.2,mat(Math.random()>.5?0x67644f:0x333c30),false);
+}
+for(let i=0;i<16;i++){
+ const side=i%2===0?-1:1,z=-25+i*3.5;
+ box(side*(9+Math.random()*5),1.3,z,2.5,2.6,2,concrete);
+ box(side*10,2.8,z,2.7,.25,2.2,dark);
+}
+for(let i=0;i<8;i++){
+ const x=(Math.random()-.5)*35,z=-12-Math.random()*27;
+ box(x,1.3,z,3,2.6,3,concrete);
+ box(x,2.7,z,3.2,.2,3.2,dark);
+}
+for(let i=0;i<22;i++){
+ const x=(Math.random()-.5)*60,z=-10-Math.random()*40;
+ const trunk=box(x,1.5,z,.35,3,.35,mat(0x40372a));
+ const leaves=new THREE.Mesh(new THREE.ConeGeometry(1.5,4,6),mat(0x344b35));
+ leaves.position.set(x,4,z);leaves.castShadow=true;scene.add(leaves);
+}
+const gun=new THREE.Group();camera.add(gun);scene.add(camera);
+const gunMat=mat(0x252c30,.35);
+const barrel=new THREE.Mesh(new THREE.BoxGeometry(.16,.16,.8),gunMat);barrel.position.set(.35,-.26,-.7);gun.add(barrel);
+const body=new THREE.Mesh(new THREE.BoxGeometry(.28,.23,.5),mat(0x46504e,.4));body.position.set(.35,-.36,-.45);gun.add(body);
+const sight=new THREE.Mesh(new THREE.BoxGeometry(.07,.09,.1),dark);sight.position.set(.35,-.21,-.43);gun.add(sight);
+const muzzle=new THREE.PointLight(0xffa34a,0,4);muzzle.position.set(.35,-.26,-1.1);gun.add(muzzle);
+
+const targets=[];
+function spawnTarget(x,z){
+ const g=new THREE.Group();
+ const uniform=mat(0x4b574c),skin=mat(0xb88b6b),black=mat(0x171c1c);
+ const torso=new THREE.Mesh(new THREE.BoxGeometry(.65,.9,.35),uniform);torso.position.y=1.25;torso.castShadow=true;g.add(torso);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,10),skin);head.position.y=1.88;head.castShadow=true;g.add(head);
+ const helmet=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8,0,Math.PI*2,0,Math.PI/2),black);helmet.position.y=2.02;g.add(helmet);
+ for(const s of [-1,1]){
+  const leg=new THREE.Mesh(new THREE.BoxGeometry(.22,.7,.25),black);leg.position.set(s*.19,.43,0);g.add(leg);
+  const arm=new THREE.Mesh(new THREE.BoxGeometry(.2,.7,.22),uniform);arm.position.set(s*.43,1.28,0);g.add(arm);
+ }
+ g.position.set(x,0,z);scene.add(g);
+ targets.push({g,hp:2,alive:true,phase:Math.random()*6});
+}
+for(let i=0;i<12;i++)spawnTarget((Math.random()-.5)*30,-12-Math.random()*30);
+
+const keys={};let active=false,health=100,ammo=30,kills=0,reloading=false,lastShot=0,gameOver=false;
+const raycaster=new THREE.Raycaster();
+const menu=document.querySelector('#menu'),hud=document.querySelector('#hud');
+const message=document.querySelector('#message');
+document.querySelector('#start').onclick=()=>{
+ active=true;health=100;ammo=30;kills=0;gameOver=false;reloading=false;
+ targets.forEach(t=>{scene.remove(t.g);});
+ targets.length=0;
+ for(let i=0;i<12;i++)spawnTarget((Math.random()-.5)*30,-12-Math.random()*30);
+ camera.position.set(0,1.7,8);camera.rotation.set(0,0,0);
+ menu.style.display='none';hud.style.display='block';message.textContent='';
+ renderer.domElement.requestPointerLock();
+};
+document.addEventListener('pointerlockchange',()=>{
+ if(!document.pointerLockElement&&active&&!gameOver){menu.style.display='flex';document.querySelector('#start').textContent='RESUME MISSION';}
+});
+document.addEventListener('mousemove',e=>{
+ if(!active||!document.pointerLockElement)return;
+ camera.rotation.order='YXZ';
+ camera.rotation.y-=e.movementX*.002;
+ camera.rotation.x-=e.movementY*.002;
+ camera.rotation.x=Math.max(-1.5,Math.min(1.5,camera.rotation.x));
+});
+document.addEventListener('keydown',e=>{
+ keys[e.code]=true;
+ if(e.code==='KeyR'&&active&&!reloading&&ammo<30){
+  reloading=true;message.textContent='RELOADING...';
+  setTimeout(()=>{if(active){ammo=30;reloading=false;message.textContent='';}},1200);
+ }
+});
+document.addEventListener('keyup',e=>keys[e.code]=false);
+document.addEventListener('mousedown',e=>{
+ if(e.button!==0||!active||!document.pointerLockElement||gameOver||reloading)return;
+ const now=performance.now();if(now-lastShot<130)return;lastShot=now;
+ if(ammo<=0){message.textContent='PRESS R TO RELOAD';return;}
+ ammo--;gun.position.z=.12;muzzle.intensity=3;
+ setTimeout(()=>{gun.position.z=0;muzzle.intensity=0;},65);
+ raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
+ const objects=[];
+ targets.forEach(t=>{if(t.alive)t.g.traverse(o=>{if(o.isMesh)objects.push(o);});});
+ const hit=raycaster.intersectObjects(objects);
+ if(hit.length){
+  const target=targets.find(t=>t.alive&&t.g===hit[0].object.parent);
+  const owner=targets.find(t=>t.alive&&t.g.getObjectById(hit[0].object.id));
+  const victim=target||owner;
+  if(victim){
+   victim.hp--;
+   if(victim.hp<=0){victim.alive=false;scene.remove(victim.g);kills++;}
+   document.querySelector('#hit').style.border='5px solid #ff493b';
+   setTimeout(()=>document.querySelector('#hit').style.border='0 solid transparent',80);
+  }
+ }
+ if(kills===12){message.textContent='MISSION COMPLETE';gameOver=true;document.exitPointerLock();}
+});
+const clock=new THREE.Clock();
+function update(){
+ requestAnimationFrame(update);
+ const dt=Math.min(clock.getDelta(),.05);
+ if(active&&!gameOver&&document.pointerLockElement){
+  const speed=(keys.ShiftLeft?10:5)*dt;
+  const forward=new THREE.Vector3(-Math.sin(camera.rotation.y),0,-Math.cos(camera.rotation.y));
+  const right=new THREE.Vector3(Math.cos(camera.rotation.y),0,-Math.sin(camera.rotation.y));
+  if(keys.KeyW)camera.position.addScaledVector(forward,speed);
+  if(keys.KeyS)camera.position.addScaledVector(forward,-speed);
+  if(keys.KeyD)camera.position.addScaledVector(right,speed);
+  if(keys.KeyA)camera.position.addScaledVector(right,-speed);
+  camera.position.x=THREE.MathUtils.clamp(camera.position.x,-45,45);
+  camera.position.z=THREE.MathUtils.clamp(camera.position.z,-45,45);
+  targets.forEach(t=>{
+   if(!t.alive)return;
+   t.phase+=dt;
+   t.g.position.x+=Math.sin(t.phase)*dt*.18;
+   t.g.position.z+=Math.cos(t.phase*.7)*dt*.12;
+   t.g.rotation.y=Math.atan2(camera.position.x-t.g.position.x,camera.position.z-t.g.position.z);
+  });
+ }
+ document.querySelector('#health').textContent=health;
+ document.querySelector('#kills').textContent=kills+'/12';
+ document.querySelector('#bullets').textContent=ammo;
+ renderer.render(scene,camera);
+}
+addEventListener('resize',()=>{
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);
+});
+update();
+</script>
+</body>
+</html>
